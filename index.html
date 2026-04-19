@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Resiliência Cibernética | Usaflex</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+    <div class="app-container">
+        <!-- Dashboard Responsivo -->
+        <header class="dashboard">
+            <div class="stat-item">
+                <span id="total-participants">-</span>
+                <label>Participantes</label>
+            </div>
+            <div class="stat-item">
+                <span id="global-accuracy" class="text-success">0%</span>
+                <label>Acertos</label>
+            </div>
+            <div class="stat-item">
+                <span id="global-errors" class="text-error">0%</span>
+                <label>Erros</label>
+            </div>
+        </header>
+
+        <main class="card">
+            <!-- Barra de Progresso -->
+            <div class="progress-container">
+                <div id="progress-bar"></div>
+            </div>
+
+            <section id="quiz-flow">
+                <div id="question-area">
+                    <!-- Gerado via JS -->
+                </div>
+                
+                <footer class="actions">
+                    <button id="next-btn" class="btn btn-main">Próxima</button>
+                </footer>
+            </section>
+
+            <!-- Resultado Final (Escondido Inicialmente) -->
+            <section id="result-area" class="hidden">
+                <div class="result-summary">
+                    <h2>Quiz Finalizado!</h2>
+                    <p id="user-score-msg"></p>
+                </div>
+
+                <div class="alert-box">
+                    <h3>💡 Foco de Atenção</h3>
+                    <p>Pergunta mais errada pela equipe:</p>
+                    <strong id="most-missed-text">Analisando dados...</strong>
+                </div>
+
+                <button class="btn btn-outline" onclick="location.reload()">Tentar Novamente</button>
+            </section>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

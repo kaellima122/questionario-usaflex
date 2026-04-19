@@ -1,0 +1,138 @@
+/* Variáveis de Cores Usaflex */
+:root {
+    --primary: #002855;
+    --accent: #a68966;
+    --bg: #eff2f5;
+    --white: #ffffff;
+    --success: #28a745;
+    --error: #dc3545;
+    --text: #333;
+    --radius: 12px;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background-color: var(--bg);
+    color: var(--text);
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
+}
+
+.app-container {
+    width: 100%;
+    max-width: 600px; /* Largura ideal para Desktop */
+    padding: 15px;
+}
+
+/* Dashboard: Grid 3 colunas no PC, Empilhado ou 3 no Mobile */
+.dashboard {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    background: var(--primary);
+    padding: 20px 15px;
+    border-radius: var(--radius);
+    color: white;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.stat-item span {
+    display: block;
+    font-size: 1.4rem;
+    font-weight: bold;
+}
+
+.stat-item label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    opacity: 0.8;
+}
+
+/* Card Principal */
+.card {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 25px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+}
+
+.progress-container {
+    background: #eee;
+    height: 8px;
+    border-radius: 4px;
+    margin-bottom: 25px;
+    overflow: hidden;
+}
+
+#progress-bar {
+    background: var(--accent);
+    height: 100%;
+    width: 0%;
+    transition: width 0.4s ease;
+}
+
+/* Questões */
+h2 { font-size: 1.2rem; color: var(--primary); margin-bottom: 20px; }
+
+.options-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.option-card {
+    border: 2px solid #edeff2;
+    padding: 16px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: 0.2s;
+    font-size: 1rem;
+    line-height: 1.4;
+}
+
+.option-card:active { transform: scale(0.98); } /* Feedback de toque */
+
+.option-card.selected {
+    border-color: var(--primary);
+    background-color: #f0f7ff;
+    font-weight: 600;
+}
+
+/* Botões */
+.actions { margin-top: 30px; }
+
+.btn {
+    width: 100%;
+    padding: 16px;
+    border-radius: 8px;
+    border: none;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.btn-main { background: var(--primary); color: white; }
+.btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); margin-top: 15px; }
+
+.hidden { display: none; }
+
+.alert-box {
+    background: #fff5f5;
+    border-left: 4px solid var(--error);
+    padding: 15px;
+    margin: 20px 0;
+    text-align: left;
+    font-size: 0.95rem;
+}
+
+/* Responsividade Extra para Telas Muito Pequenas */
+@media (max-width: 380px) {
+    .dashboard { padding: 15px 5px; }
+    .stat-item span { font-size: 1.1rem; }
+    .card { padding: 15px; }
+}

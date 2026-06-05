@@ -9,57 +9,68 @@ const questions = [
     { 
         q: "Um ataque que retira o sistema de vendas do ar, impedindo o trabalho, ataca diretamente qual pilar da tríade CID?", 
         options: ["Confidencialidade", "Integridade", "Disponibilidade", "Accountability"], 
-        correct: 2 
+        correct: 2,
+        info: "Disponibilidade garante que os sistemas estejam acessíveis quando necessários."
     },
     { 
         q: "Se uma alteração não autorizada é feita em uma planilha de pagamentos, qual princípio de segurança foi violado?", 
         options: ["Disponibilidade", "Confidencialidade", "Integridade", "Autenticidade"], 
-        correct: 2 
+        correct: 2,
+        info: "Integridade garante que a informação não seja alterada de forma indevida."
     },
     { 
         q: "Ao deixar o computador desbloqueado, por que você assume um risco profissional alto?", 
         options: ["Porque o PC pode entrar em modo de suspensão", "Porque qualquer ação feita na sua conta será legalmente atribuída a você", "Porque gasta mais energia elétrica", "Porque o Windows pode travar"], 
-        correct: 1 
+        correct: 1,
+        info: "O bloqueio (Win+L) garante a Accountability (responsabilidade pelas ações)."
     },
     { 
         q: "Um suposto gestor solicita, via WhatsApp, que você ignore um fluxo de aprovação por ser 'urgente'. Qual a conduta correta?", 
         options: ["Atender prontamente para não travar a operação", "Pausar e validar por canal oficial, pois a urgência é isca para erro", "Pedir para um colega fazer no seu lugar", "Ignorar e não falar nada"], 
-        correct: 1 
+        correct: 1,
+        info: "A urgência artificial é uma técnica clássica de manipulação para contornar protocolos."
     },
     { 
         q: "Você encontrou uma ferramenta online gratuita que facilita muito seu trabalho. O que deve fazer antes de usá-la com dados da empresa?", 
         options: ["Usar apenas se for em aba anônima", "Testar com dados reais para ver se funciona", "Validar com a TI, para evitar o risco de Shadow IT", "Usar desde que não conte para ninguém"], 
-        correct: 2 
+        correct: 2,
+        info: "O uso de ferramentas não homologadas (Shadow IT) gera riscos críticos de vazamento de dados."
     },
     { 
         q: "Qual dessas senhas segue a recomendação atual do Padrão NIST (Passphrase) para máxima segurança?", 
         options: ["Admin@123", "Mudar#2024", "Cadeira-Gato-Cafe-Vento-99", "S3nh4!F0rt3"], 
-        correct: 2 
+        correct: 2,
+        info: "O NIST recomenda frases longas (Passphrases), pois o comprimento é mais seguro que a complexidade de símbolos."
     },
     { 
         q: "Sobre a política de troca de senhas, qual a orientação moderna apresentada?", 
         options: ["Trocar obrigatoriamente a cada 30 dias", "Trocar apenas se houver suspeita de vazamento ou comprometimento", "Nunca trocar a senha para não esquecer", "Trocar apenas quando o suporte solicitar"], 
-        correct: 1 
+        correct: 1,
+        info: "Trocas forçadas geram senhas previsíveis. Mude apenas se houver risco real."
     },
     { 
         q: "Onde seus arquivos de trabalho devem estar para que a empresa consiga recuperá-los em caso de quebra do seu hardware?", 
         options: ["Na pasta 'Documentos' do seu C:", "Na 'Área de Trabalho' para fácil acesso", "Em pastas sincronizadas no OneDrive ou SharePoint", "Em um pendrive na sua gaveta"], 
-        correct: 2 
+        correct: 2,
+        info: "Arquivos salvos localmente (Área de Trabalho) não entram no backup automático da empresa."
     },
     { 
         q: "Você acabou de imprimir um relatório com dados sensíveis, mas a reunião foi adiada. O que fazer?", 
         options: ["Deixar o papel na bandeja da impressora", "Guardar em cima da mesa para a próxima reunião", "Retirar e guardar em local seguro ou destruir se não for usar", "Pedir para a limpeza descartar no lixo comum"], 
-        correct: 2 
+        correct: 2,
+        info: "A 'Política de Mesa Limpa' protege informações físicas contra acessos indevidos."
     },
     { 
-        q: "Um e-mail com linguagem estranha e um link inesperado chega em sua caixa, vindo de um parceiro conhecido. O que isso pode ser?", 
-        options: ["Uma atualização automática do sistema", "Engenharia social usando uma quebra de padrão do remetente", "Um erro comum de digitação", "Um presente da empresa"], 
-        correct: 1 
+        q: "Você recebe um e-mail de um parceiro conhecido com um link inesperado e tom de urgência. Como agir diante dessa 'quebra de padrão'?", 
+        options: ["Clicar logo para ver se é algo importante", "Validar a veracidade por outro canal oficial (telefone ou chat) antes de clicar", "Responder o e-mail perguntando se é seguro", "Ignorar e apagar o e-mail sem avisar ninguém"], 
+        correct: 1,
+        info: "Links inesperados, mesmo de conhecidos, podem indicar contas invadidas. Sempre valide por outro canal."
     },
     { 
         q: "Qual o maior risco de conectar um pendrive encontrado no pátio da empresa no seu computador corporativo?", 
         options: ["O pendrive estar cheio e travar o PC", "Comprometer toda a rede da empresa com um software malicioso", "Perder os arquivos que estão no pendrive", "O Windows não reconhecer o dispositivo"], 
-        correct: 1 
+        correct: 1,
+        info: "Dispositivos desconhecidos são vetores principais para entrada de Ransomwares e vírus na rede."
     }
 ];
 
@@ -67,26 +78,23 @@ let currentIndex = 0;
 let answers = [];
 let deviceID = "";
 
-// INICIALIZAÇÃO
 async function init() {
     getOrSetDeviceID();
     
     try {
-        // Verifica se este ID já respondeu o questionário
         const { data, error } = await supabaseClient
             .from('questionario_resiliencia')
-            .select('acertos')
+            .select('acertos, perguntas_erradas')
             .eq('device_id', deviceID)
             .maybeSingle();
 
         if (data) {
-            // Se já respondeu, pula direto para a tela de resultados
-            mostrarResultadoFinal(data.acertos, true);
+            // Se já respondeu, reconstrói o array de respostas para a revisão
+            // Aqui marcamos como -1 o que ele errou (apenas para exibição)
+            mostrarResultadoFinal(data.acertos, true, data.perguntas_erradas);
             return;
         }
-    } catch (e) {
-        console.error("Erro na checaagem inicial:", e);
-    }
+    } catch (e) { console.error(e); }
 
     renderQuestion();
     await fetchGlobalStats();
@@ -165,7 +173,6 @@ async function finishQuiz() {
         }]);
 
         if (error) {
-            // Se o banco rejeitar por duplicidade (Constraint unique_device_id)
             if (error.code === '23505' || error.message.includes('unique_device_id')) {
                 alert("Você já participou deste questionário!");
                 window.location.reload();
@@ -174,33 +181,59 @@ async function finishQuiz() {
             throw error;
         }
 
-        mostrarResultadoFinal(hits, false);
+        mostrarResultadoFinal(hits, false, missedIndices);
         
     } catch (err) {
-        console.error("Erro ao salvar:", err);
-        // Fallback para caso o ID já exista mas o código de erro mude
-        if (err.message && err.message.includes('unique_device_id')) {
-            alert("Você já participou!");
-            window.location.reload();
-        } else {
-            alert("Erro ao salvar resultados. Verifique sua conexão.");
-        }
+        console.error(err);
+        alert("Erro ao salvar. Verifique a conexão.");
     }
 }
 
-async function mostrarResultadoFinal(hits, jaRespondeu) {
-    document.getElementById('progress-bar').style.width = `100%`;
+function mostrarResultadoFinal(hits, jaRespondeu, missedIndices) {
     document.getElementById('quiz-flow').classList.add('hidden');
     document.getElementById('result-area').classList.remove('hidden');
     
     const msgArea = document.getElementById('user-score-msg');
-    if (jaRespondeu) {
-        msgArea.innerHTML = `<strong>Aviso:</strong> Você já enviou suas respostas anteriormente. Sua pontuação foi ${hits} acertos.`;
-    } else {
-        msgArea.innerText = `Parabéns! Você acertou ${hits} de ${questions.length} questões.`;
-    }
+    msgArea.innerHTML = jaRespondeu ? 
+        `<strong>Aviso:</strong> Você já participou. Sua nota foi ${hits}/${questions.length}.` : 
+        `Parabéns! Você acertou ${hits} de ${questions.length} questões.`;
+
+    renderReview(missedIndices);
+    fetchGlobalStats();
+}
+
+// NOVA FUNÇÃO: Renderiza a revisão de erros
+function renderReview(missedIndices) {
+    const container = document.getElementById('result-area');
     
-    await fetchGlobalStats();
+    // Cria um container para a revisão se não existir
+    let reviewDiv = document.getElementById('review-box');
+    if (!reviewDiv) {
+        reviewDiv = document.createElement('div');
+        reviewDiv.id = 'review-box';
+        reviewDiv.style.marginTop = '20px';
+        reviewDiv.style.textAlign = 'left';
+        container.appendChild(reviewDiv);
+    }
+
+    if (!missedIndices || missedIndices.length === 0) {
+        reviewDiv.innerHTML = "<h3 style='color: green;'>⭐ Desempenho Perfeito! Você domina o assunto.</h3>";
+        return;
+    }
+
+    let html = "<h3>📚 Revisão de Erros</h3>";
+    missedIndices.forEach(idx => {
+        const q = questions[idx];
+        html += `
+            <div style="background: #fff5f5; padding: 15px; border-left: 4px solid #e74c3c; margin-bottom: 10px; border-radius: 4px;">
+                <p style="font-weight: bold; margin: 0;">${q.q}</p>
+                <p style="color: #e74c3c; font-size: 0.9rem; margin: 5px 0;">Sua resposta estava incorreta.</p>
+                <p style="color: #27ae60; font-weight: bold; margin: 0;">Resposta correta: ${q.options[q.correct]}</p>
+                <p style="font-size: 0.85rem; color: #661; font-style: italic; margin-top: 5px;">💡 Por que? ${q.info}</p>
+            </div>
+        `;
+    });
+    reviewDiv.innerHTML = html;
 }
 
 async function fetchGlobalStats() {
@@ -210,34 +243,15 @@ async function fetchGlobalStats() {
         if (!data || data.length === 0) return;
 
         const totalUsers = data.length;
-        const totalPossibleHits = totalUsers * questions.length;
         const totalHits = data.reduce((sum, row) => sum + row.acertos, 0);
-        const accuracy = ((totalHits / totalPossibleHits) * 100).toFixed(1);
+        const accuracy = ((totalHits / (totalUsers * questions.length)) * 100).toFixed(1);
 
         document.getElementById('total-participants').innerText = totalUsers;
         document.getElementById('global-accuracy').innerText = accuracy + '%';
         
         const errorElem = document.getElementById('global-errors');
         if (errorElem) errorElem.innerText = (100 - accuracy).toFixed(1) + '%';
-
-        let errorFreq = {};
-        data.forEach(row => {
-            if (row.perguntas_erradas) {
-                row.perguntas_erradas.forEach(idx => {
-                    errorFreq[idx] = (errorFreq[idx] || 0) + 1;
-                });
-            }
-        });
-
-        const keys = Object.keys(errorFreq);
-        if (keys.length > 0) {
-            const mostMissedIdx = keys.reduce((a, b) => errorFreq[a] > errorFreq[b] ? a : b);
-            const mostMissedText = document.getElementById('most-missed-text');
-            if (mostMissedText) mostMissedText.innerText = `"${questions[mostMissedIdx].q}"`;
-        }
-    } catch (err) {
-        console.error("Erro ao buscar estatísticas:", err);
-    }
+    } catch (err) { console.error(err); }
 }
 
 init();

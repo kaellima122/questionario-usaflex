@@ -1,10 +1,10 @@
-// 1. CONFIGURAÇÃO - Substitua a KEY abaixo pela chave 'anon' 'public' (a que começa com eyJ)
+// 1. CONFIGURAÇÃO
 const SUPABASE_URL = 'https://wijpbonbzngdglkeqvjy.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndpanBib25iem5nZGdsa2Vxdmp5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2MDQ1MzUsImV4cCI6MjA5MjE4MDUzNX0.FeIP_il0g4mvijP0kVGqsXRZ3dpGq8CGU9bfJNWwENQ'; 
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// === TODAS AS 11 QUESTÕES (Nível Profissional / Situações Reais) ===
+// === TODAS AS 11 QUESTÕES ===
 const questions = [
     { 
         q: "Um ataque que retira o sistema de vendas do ar, impedindo o trabalho, ataca diretamente qual pilar da tríade CID?", 
@@ -32,8 +32,8 @@ const questions = [
         correct: 2 
     },
     { 
-        q: "Qual dessas senhas segue a recomendação atual do Padrão NIST para máxima segurança?", 
-        options: ["Admin@123", "Mudar#2024", "Cachorro-Amarelo-Correndo-No-Parque", "S3nh4!F0rt3"], 
+        q: "Qual dessas senhas segue a recomendação atual do Padrão NIST (Passphrase) para máxima segurança?", 
+        options: ["Admin@123", "Mudar#2024", "Cadeira-Gato-Cafe-Vento-99", "S3nh4!F0rt3"], 
         correct: 2 
     },
     { 
@@ -67,8 +67,27 @@ let currentIndex = 0;
 let answers = [];
 let deviceID = "";
 
+// INICIALIZAÇÃO
 async function init() {
     getOrSetDeviceID();
+    
+    try {
+        // Verifica se este ID já respondeu o questionário
+        const { data, error } = await supabaseClient
+            .from('questionario_resiliencia')
+            .select('acertos')
+            .eq('device_id', deviceID)
+            .maybeSingle();
+
+        if (data) {
+            // Se já respondeu, pula direto para a tela de resultados
+            mostrarResultadoFinal(data.acertos, true);
+            return;
+        }
+    } catch (e) {
+        console.error("Erro na checaagem inicial:", e);
+    }
+
     renderQuestion();
     await fetchGlobalStats();
 }
@@ -96,7 +115,7 @@ function renderQuestion() {
         <h2 style="font-size: 1.4rem; line-height: 1.3;">${q.q}</h2>
         <div class="options-group" style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
             ${q.options.map((opt, i) => `
-                <div class="option-card" onclick="selectOpt(${i})" style="padding: 12px; border: 1px solid #ddd; border-radius: 8px; cursor: pointer;">
+                <div class="option-card" onclick="selectOpt(${i})" style="padding: 12px; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; transition: 0.3s;">
                     ${opt}
                 </div>
             `).join('')}
@@ -129,8 +148,6 @@ document.getElementById('next-btn').addEventListener('click', async () => {
 });
 
 async function finishQuiz() {
-    document.getElementById('progress-bar').style.width = `100%`;
-    
     let hits = 0;
     let missedIndices = [];
 
@@ -147,17 +164,43 @@ async function finishQuiz() {
             perguntas_erradas: missedIndices
         }]);
 
-        if (error) throw error;
+        if (error) {
+            // Se o banco rejeitar por duplicidade (Constraint unique_device_id)
+            if (error.code === '23505' || error.message.includes('unique_device_id')) {
+                alert("Você já participou deste questionário!");
+                window.location.reload();
+                return;
+            }
+            throw error;
+        }
 
-        document.getElementById('quiz-flow').classList.add('hidden');
-        document.getElementById('result-area').classList.remove('hidden');
-        document.getElementById('user-score-msg').innerText = `Você acertou ${hits} de ${questions.length} questões.`;
+        mostrarResultadoFinal(hits, false);
         
-        await fetchGlobalStats();
     } catch (err) {
         console.error("Erro ao salvar:", err);
-        alert("Erro ao salvar resultados. Verifique a conexão.");
+        // Fallback para caso o ID já exista mas o código de erro mude
+        if (err.message && err.message.includes('unique_device_id')) {
+            alert("Você já participou!");
+            window.location.reload();
+        } else {
+            alert("Erro ao salvar resultados. Verifique sua conexão.");
+        }
     }
+}
+
+async function mostrarResultadoFinal(hits, jaRespondeu) {
+    document.getElementById('progress-bar').style.width = `100%`;
+    document.getElementById('quiz-flow').classList.add('hidden');
+    document.getElementById('result-area').classList.remove('hidden');
+    
+    const msgArea = document.getElementById('user-score-msg');
+    if (jaRespondeu) {
+        msgArea.innerHTML = `<strong>Aviso:</strong> Você já enviou suas respostas anteriormente. Sua pontuação foi ${hits} acertos.`;
+    } else {
+        msgArea.innerText = `Parabéns! Você acertou ${hits} de ${questions.length} questões.`;
+    }
+    
+    await fetchGlobalStats();
 }
 
 async function fetchGlobalStats() {
@@ -167,8 +210,9 @@ async function fetchGlobalStats() {
         if (!data || data.length === 0) return;
 
         const totalUsers = data.length;
+        const totalPossibleHits = totalUsers * questions.length;
         const totalHits = data.reduce((sum, row) => sum + row.acertos, 0);
-        const accuracy = ((totalHits / (totalUsers * questions.length)) * 100).toFixed(1);
+        const accuracy = ((totalHits / totalPossibleHits) * 100).toFixed(1);
 
         document.getElementById('total-participants').innerText = totalUsers;
         document.getElementById('global-accuracy').innerText = accuracy + '%';

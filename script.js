@@ -1,4 +1,4 @@
-// 1. CONFIGURAÇÃO
+// 1. CONFIGURAÇÃO SUPABASE
 const SUPABASE_URL = 'https://wijpbonbzngdglkeqvjy.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndpanBib25iem5nZGdsa2Vxdmp5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2MDQ1MzUsImV4cCI6MjA5MjE4MDUzNX0.FeIP_il0g4mvijP0kVGqsXRZ3dpGq8CGU9bfJNWwENQ'; 
 
@@ -64,13 +64,13 @@ const questions = [
         q: "Você recebe um e-mail de um parceiro conhecido com um link inesperado e tom de urgência. Como agir diante dessa 'quebra de padrão'?", 
         options: ["Clicar logo para ver se é algo importante", "Validar a veracidade por outro canal oficial (telefone ou chat) antes de clicar", "Responder o e-mail perguntando se é seguro", "Ignorar e apagar o e-mail sem avisar ninguém"], 
         correct: 1,
-        info: "Links inesperados, mesmo de conhecidos, podem indicar contas invadidas. Sempre valide por outro canal."
+        info: "Links inesperados podem indicar contas invadidas. Sempre valide por outro canal oficial."
     },
     { 
         q: "Qual o maior risco de conectar um pendrive encontrado no pátio da empresa no seu computador corporativo?", 
         options: ["O pendrive estar cheio e travar o PC", "Comprometer toda a rede da empresa com um software malicioso", "Perder os arquivos que estão no pendrive", "O Windows não reconhecer o dispositivo"], 
         correct: 1,
-        info: "Dispositivos desconhecidos são vetores principais para entrada de Ransomwares e vírus na rede."
+        info: "Dispositivos desconhecidos são vetores principais para entrada de vírus e Ransomware."
     }
 ];
 
@@ -78,25 +78,27 @@ let currentIndex = 0;
 let answers = [];
 let deviceID = "";
 
+// INICIALIZAÇÃO
 async function init() {
     getOrSetDeviceID();
     
     try {
-        const { data, error } = await supabaseClient
+        const { data } = await supabaseClient
             .from('questionario_resiliencia')
             .select('acertos, perguntas_erradas')
             .eq('device_id', deviceID)
             .maybeSingle();
 
         if (data) {
-            // Se já respondeu, reconstrói o array de respostas para a revisão
-            // Aqui marcamos como -1 o que ele errou (apenas para exibição)
             mostrarResultadoFinal(data.acertos, true, data.perguntas_erradas);
-            return;
+        } else {
+            renderQuestion();
         }
-    } catch (e) { console.error(e); }
-
-    renderQuestion();
+    } catch (e) { 
+        renderQuestion();
+    }
+    
+    // Sempre carrega os dados globais para o dashboard no topo
     await fetchGlobalStats();
 }
 
@@ -112,20 +114,16 @@ function renderQuestion() {
     const container = document.getElementById('question-area');
     const q = questions[currentIndex];
     
-    const progressFill = document.getElementById('progress-bar');
-    if (progressFill) {
-        const progress = (currentIndex / questions.length) * 100;
-        progressFill.style.width = `${progress}%`;
-    }
+    // Barra de Progresso
+    const progress = (currentIndex / questions.length) * 100;
+    document.getElementById('progress-bar').style.width = `${progress}%`;
 
     container.innerHTML = `
-        <p style="color:#a68966; font-weight:bold; margin-bottom:5px;">Questão ${currentIndex + 1} de ${questions.length}</p>
-        <h2 style="font-size: 1.4rem; line-height: 1.3;">${q.q}</h2>
-        <div class="options-group" style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+        <p style="color:#a68966; font-weight:bold; margin-bottom:10px;">Questão ${currentIndex + 1} de ${questions.length}</p>
+        <h2 style="font-size: 1.2rem; margin-bottom:20px;">${q.q}</h2>
+        <div class="options-group">
             ${q.options.map((opt, i) => `
-                <div class="option-card" onclick="selectOpt(${i})" style="padding: 12px; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; transition: 0.3s;">
-                    ${opt}
-                </div>
+                <div class="option-card" id="opt-${i}" onclick="selectOpt(${i})">${opt}</div>
             `).join('')}
         </div>
     `;
@@ -134,14 +132,8 @@ function renderQuestion() {
 window.selectOpt = (index) => {
     answers[currentIndex] = index;
     const cards = document.querySelectorAll('.option-card');
-    cards.forEach(c => {
-        c.style.backgroundColor = 'white';
-        c.style.borderColor = '#ddd';
-        c.style.color = 'black';
-    });
-    cards[index].style.backgroundColor = '#a68966';
-    cards[index].style.borderColor = '#a68966';
-    cards[index].style.color = 'white';
+    cards.forEach(c => c.classList.remove('selected'));
+    document.getElementById(`opt-${index}`).classList.add('selected');
 };
 
 document.getElementById('next-btn').addEventListener('click', async () => {
@@ -172,64 +164,60 @@ async function finishQuiz() {
             perguntas_erradas: missedIndices
         }]);
 
-        if (error) {
-            if (error.code === '23505' || error.message.includes('unique_device_id')) {
-                alert("Você já participou deste questionário!");
-                window.location.reload();
-                return;
-            }
-            throw error;
+        if (error && (error.code === '23505' || error.message.includes('unique_device_id'))) {
+            alert("Você já participou deste questionário!");
+            location.reload();
+            return;
         }
 
         mostrarResultadoFinal(hits, false, missedIndices);
         
     } catch (err) {
         console.error(err);
-        alert("Erro ao salvar. Verifique a conexão.");
+        alert("Erro ao salvar resultados.");
     }
 }
 
 function mostrarResultadoFinal(hits, jaRespondeu, missedIndices) {
+    document.getElementById('progress-bar').style.width = `100%`;
     document.getElementById('quiz-flow').classList.add('hidden');
     document.getElementById('result-area').classList.remove('hidden');
     
-    const msgArea = document.getElementById('user-score-msg');
-    msgArea.innerHTML = jaRespondeu ? 
-        `<strong>Aviso:</strong> Você já participou. Sua nota foi ${hits}/${questions.length}.` : 
+    const msg = jaRespondeu ? 
+        `Você já participou! Sua nota anterior foi ${hits}/${questions.length}.` : 
         `Parabéns! Você acertou ${hits} de ${questions.length} questões.`;
 
+    document.getElementById('user-score-msg').innerText = msg;
+    
     renderReview(missedIndices);
     fetchGlobalStats();
 }
 
-// NOVA FUNÇÃO: Renderiza a revisão de erros
 function renderReview(missedIndices) {
     const container = document.getElementById('result-area');
-    
-    // Cria um container para a revisão se não existir
     let reviewDiv = document.getElementById('review-box');
+    
     if (!reviewDiv) {
         reviewDiv = document.createElement('div');
         reviewDiv.id = 'review-box';
-        reviewDiv.style.marginTop = '20px';
-        reviewDiv.style.textAlign = 'left';
-        container.appendChild(reviewDiv);
+        reviewDiv.className = 'review-section';
+        // Insere antes do botão de reiniciar
+        container.insertBefore(reviewDiv, container.querySelector('button'));
     }
 
     if (!missedIndices || missedIndices.length === 0) {
-        reviewDiv.innerHTML = "<h3 style='color: green;'>⭐ Desempenho Perfeito! Você domina o assunto.</h3>";
+        reviewDiv.innerHTML = "<h3 style='color: #27ae60; margin: 20px 0;'>⭐ Desempenho Perfeito!</h3>";
         return;
     }
 
-    let html = "<h3>📚 Revisão de Erros</h3>";
+    let html = "<h3 style='margin: 20px 0;'>📚 Revisão de Erros</h3>";
     missedIndices.forEach(idx => {
         const q = questions[idx];
         html += `
-            <div style="background: #fff5f5; padding: 15px; border-left: 4px solid #e74c3c; margin-bottom: 10px; border-radius: 4px;">
+            <div style="background: #fff5f5; padding: 15px; border-left: 4px solid #e74c3c; margin-bottom: 10px; border-radius: 4px; text-align: left;">
                 <p style="font-weight: bold; margin: 0;">${q.q}</p>
-                <p style="color: #e74c3c; font-size: 0.9rem; margin: 5px 0;">Sua resposta estava incorreta.</p>
-                <p style="color: #27ae60; font-weight: bold; margin: 0;">Resposta correta: ${q.options[q.correct]}</p>
-                <p style="font-size: 0.85rem; color: #661; font-style: italic; margin-top: 5px;">💡 Por que? ${q.info}</p>
+                <p style="color: #27ae60; font-weight: bold; margin: 5px 0 0 0;">Correto: ${q.options[q.correct]}</p>
+                <p style="font-size: 0.85rem; color: #555; font-style: italic; margin-top: 5px;">💡 ${q.info}</p>
             </div>
         `;
     });
@@ -240,18 +228,48 @@ async function fetchGlobalStats() {
     try {
         const { data, error } = await supabaseClient.from('questionario_resiliencia').select('*');
         if (error) throw error;
-        if (!data || data.length === 0) return;
+        
+        const mostMissedText = document.getElementById('most-missed-text');
+        if (!data || data.length === 0) {
+            if (mostMissedText) mostMissedText.innerText = "Aguardando participantes...";
+            return;
+        }
 
+        // 1. DASHBOARD NO TOPO
         const totalUsers = data.length;
         const totalHits = data.reduce((sum, row) => sum + row.acertos, 0);
         const accuracy = ((totalHits / (totalUsers * questions.length)) * 100).toFixed(1);
 
         document.getElementById('total-participants').innerText = totalUsers;
         document.getElementById('global-accuracy').innerText = accuracy + '%';
-        
-        const errorElem = document.getElementById('global-errors');
-        if (errorElem) errorElem.innerText = (100 - accuracy).toFixed(1) + '%';
-    } catch (err) { console.error(err); }
+        document.getElementById('global-errors').innerText = (100 - accuracy).toFixed(1) + '%';
+
+        // 2. LOGICA DA PERGUNTA MAIS ERRADA
+        let errorFreq = {};
+        let teveErros = false;
+
+        data.forEach(row => {
+            if (row.perguntas_erradas && Array.isArray(row.perguntas_erradas)) {
+                row.perguntas_erradas.forEach(idx => {
+                    errorFreq[idx] = (errorFreq[idx] || 0) + 1;
+                    teveErros = true;
+                });
+            }
+        });
+
+        if (mostMissedText) {
+            if (!teveErros) {
+                mostMissedText.innerText = "Nenhuma questão errada pela equipe até agora! ⭐";
+            } else {
+                const keys = Object.keys(errorFreq);
+                const mostMissedIdx = keys.reduce((a, b) => errorFreq[a] > errorFreq[b] ? a : b);
+                mostMissedText.innerText = questions[mostMissedIdx].q;
+            }
+        }
+
+    } catch (err) { 
+        console.error("Erro nas estatísticas:", err); 
+    }
 }
 
 init();
